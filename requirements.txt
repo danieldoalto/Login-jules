@@ -1,0 +1,12 @@
+Flask>=2.0
+Flask-SQLAlchemy>=2.5
+Flask-Mail>=0.9
+python-dotenv>=0.19
+Flask-WTF>=1.0 # Para formulários e proteção CSRF
+Flask-Bcrypt>=1.0 # Para hashing de senhas
+Flask-Login>=0.5 # Para gerenciamento de sessão de usuário
+# Para HTTPS em desenvolvimento (opcional, pode ser feito diretamente pelo Flask)
+# pyOpenSSL
+
+# Para interagir com o firewall (exemplo, se usarmos subprocess)
+# Nenhuma dependência Python específica aqui, será via comandos do sistema.

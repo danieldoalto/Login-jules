@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Página Inicial - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Bem-vindo ao Sistema de Login com Firewall!</h2>
+    <p>Este sistema permite o registro de usuários, login e gerenciamento de acesso via firewall.</p>
+
+    {% if current_user and current_user.is_authenticated %}
+        {# Lógica para usuário logado - será mais relevante com Flask-Login #}
+        <p>Você está logado como {{ current_user.email }}.</p>
+        <p><a href="{{ url_for('main.logout') }}" class="btn btn-danger">Logout</a></p>
+        {# Adicionar link para um painel ou área restrita #}
+        {# <p><a href="{{ url_for('main.dashboard') }}" class="btn btn-info">Acessar Painel</a></p> #}
+    {% else %}
+        <p>Por favor, registre-se ou faça login para continuar.</p>
+        <div style="margin-top: 20px;">
+            <a href="{{ url_for('main.register') }}" class="btn btn-primary" style="margin-right: 10px; background-color: #28a745; border-color: #28a745; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px;">Registrar Nova Conta</a>
+            <a href="{{ url_for('main.login') }}" class="btn btn-secondary" style="background-color: #007bff; border-color: #007bff; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px;">Fazer Login</a>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 30px;">
+        <h4>Status do Sistema (Exemplo)</h4>
+        <p>Para simular o acesso a um serviço protegido, após o login, seu IP será liberado no firewall. Ao fazer logout, o acesso será revogado.</p>
+        <p><em>(Esta é uma descrição. A funcionalidade real de firewall será implementada e testada nas próximas etapas.)</em></p>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block styles_extra %}
+<style>
+    .container { max-width: 700px; margin: auto; padding-top: 20px; }
+    .btn { display: inline-block; font-weight: 400; text-align: center; white-space: nowrap; vertical-align: middle;
+           -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+           border: 1px solid transparent; padding: .375rem .75rem; font-size: 1rem; line-height: 1.5;
+           border-radius: .25rem; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out; }
+    /* Cores customizadas nos links inline para simplicidade, idealmente seriam classes .btn- alguma-coisa */
+</style>
+{% endblock %}

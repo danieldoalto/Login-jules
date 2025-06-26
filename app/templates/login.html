@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}Login - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-control { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; }
+    .btn-primary { background-color: #007bff; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background-color: #0056b3; }
+    .alert { padding: 1rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; }
+    .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+    .field-error { color: red; font-size: 0.9em; }
+    #math_challenge_display_login { font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Login</h2>
+
+{% if form %} {# Verifica se o formulário de login foi passado para o template #}
+    <form method="POST" action="{{ url_for('main.login') }}" novalidate>
+        {{ form.hidden_tag() }} {# CSRF token, num1_login, num2_login #}
+
+        <div class="form-group">
+            {{ form.email.label }}
+            {{ form.email(class="form-control", placeholder="seuemail@example.com") }}
+            {% if form.email.errors %}
+                {% for error in form.email.errors %}
+                    <span class="field-error">{{ error }}</span><br>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+            {% if form.password.errors %}
+                {% for error in form.password.errors %}
+                    <span class="field-error">{{ error }}</span><br>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <p>Verificação: Quanto é <span id="math_challenge_display_login">{{ form.num1_login.data }} + {{ form.num2_login.data }}</span>?</p>
+            {{ form.math_answer_login.label(text="Sua Resposta:") }}
+            {{ form.math_answer_login(class="form-control", size=5) }}
+            {% if form.math_answer_login.errors %}
+                {% for error in form.math_answer_login.errors %}
+                    <span class="field-error">{{ error }}</span><br>
+                {% endfor %}
+            {% endif %}
+            {% if math_error_login %} {# Erro customizado da rota de login #}
+                <span class="field-error">{{ math_error_login }}</span><br>
+            {% endif %}
+        </div>
+
+        {% if form.remember %}
+        <div class="form-group form-check">
+            {{ form.remember(class="form-check-input") }}
+            {{ form.remember.label(class="form-check-label") }}
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+{% else %}
+    <p>A funcionalidade de login será implementada em breve. Formulário de login aparecerá aqui.</p>
+{% endif %}
+
+<p>Não tem uma conta? <a href="{{ url_for('main.register') }}">Registre-se aqui</a>.</p>
+{# Adicionar link para "Esqueci minha senha" no futuro, se implementado #}
+{# <p><a href="{{ url_for('main.request_password_reset') }}">Esqueceu sua senha?</a></p> #}
+
+{% endblock %}

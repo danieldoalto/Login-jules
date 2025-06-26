@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Painel - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Painel de Controle</h2>
+
+    {% if current_user and current_user.is_authenticated %}
+        <p>Bem-vindo(a) ao seu painel, <strong>{{ current_user.email }}</strong>!</p>
+
+        <h4>Informações da Sessão Atual:</h4>
+        <ul>
+            <li><strong>Seu IP Registrado:</strong> {{ current_user.current_logged_in_ip if current_user.current_logged_in_ip else "N/A" }}</li>
+            <li>
+                <strong>Expiração da Sessão de Login:</strong>
+                {% if current_user.login_session_expiration %}
+                    {{ current_user.login_session_expiration.strftime('%d/%m/%Y %H:%M:%S') }} UTC
+                {% else %}
+                    N/A
+                {% endif %}
+            </li>
+            <li><strong>Status da Confirmação de E-mail:</strong> {% if current_user.email_confirmed %}Confirmado{% else %}Pendente{% endif %}</li>
+        </ul>
+
+        <h4>Ações:</h4>
+        <p>
+            <a href="{{ url_for('main.index') }}" class="btn btn-info" style="margin-right: 10px; background-color: #17a2b8; border-color: #17a2b8; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px;">Voltar para Início</a>
+            <a href="{{ url_for('main.logout') }}" class="btn btn-danger" style="background-color: #dc3545; border-color: #dc3545; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px;">Logout</a>
+        </p>
+
+        <div style="margin-top: 30px; padding: 15px; background-color: #f0f0f0; border-radius: 5px;">
+            <h4>Notas sobre o Firewall:</h4>
+            <p>Se o seu login foi bem-sucedido, seu IP (<code>{{ current_user.current_logged_in_ip }}</code>) deveria estar temporariamente liberado no firewall do servidor para acessar todos os serviços.</p>
+            <p>Ao fazer logout, ou após a expiração da sessão (24 horas), este acesso será revogado.</p>
+            <p><em>(A lógica de interação com o firewall será implementada e testada nas próximas etapas do desenvolvimento.)</em></p>
+        </div>
+
+    {% else %}
+        <p>Você precisa estar logado para ver esta página.</p>
+        <p><a href="{{ url_for('main.login') }}">Fazer Login</a></p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block styles_extra %}
+<style>
+    .container { max-width: 700px; margin: auto; padding-top: 20px; }
+    .btn { display: inline-block; font-weight: 400; text-align: center; white-space: nowrap; vertical-align: middle;
+           -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+           border: 1px solid transparent; padding: .375rem .75rem; font-size: 1rem; line-height: 1.5;
+           border-radius: .25rem; transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out; }
+</style>
+{% endblock %}
