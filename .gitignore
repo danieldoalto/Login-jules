@@ -126,3 +126,6 @@ dmypy.json
 # Certificados SSL locais (se não versionados)
 # cert.pem
 # key.pem
+
+# Arquivo de configuração de links dinâmicos
+config.yml

@@ -78,3 +78,8 @@ def generate_math_challenge():
     num1 = random.randint(1, 10)
     num2 = random.randint(1, 9)
     return num1, num2, num1 + num2
+
+class AdminUserActionForm(FlaskForm):
+    """Formulário genérico para ações do admin que precisam de proteção CSRF."""
+    # Nenhum campo visível é necessário, apenas o token CSRF implícito.
+    submit = SubmitField('Executar Ação') # O texto do botão será definido no template

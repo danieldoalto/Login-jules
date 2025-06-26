@@ -4,17 +4,70 @@ from . import login_manager # Importa login_manager para o user_loader
 from datetime import datetime, timedelta
 import secrets
 
+from flask import current_app
+
+# Classe especial para representar o Admin em memória
+class AdminUser(UserMixin):
+    def __init__(self, email):
+        self.id = email # Usar e-mail como ID para o admin do .env
+        self.email = email
+        self.user_type = 'admin'
+        self.password_hash = None # Admin não tem hash de senha no DB
+        self.is_approved = True # Admin é sempre aprovado
+        self.email_confirmed = True # E-mail do Admin é considerado confirmado
+        # Outros campos do modelo User podem ter valores padrão ou None
+        self.current_logged_in_ip = None
+        self.login_session_expiration = None
+        self.email_confirm_token = None
+        self.email_confirm_token_expiration = None
+        self.created_at = None
+        self.updated_at = None
+        self.approved_by_email = None
+        self.approved_at = None
+
+    # UserMixin espera que is_active e is_anonymous sejam propriedades.
+    # Para um admin logado, is_active é True e is_anonymous é False.
+    # is_authenticated é True se o login foi bem-sucedido (Flask-Login lida com isso).
+
+    # Se UserMixin não fornecer padrões adequados, podemos defini-los:
+    # @property
+    # def is_active(self):
+    #     return True
+
+    # @property
+    # def is_anonymous(self):
+    #     return False
+
+    # def get_id(self): # Já fornecido por UserMixin se self.id estiver definido
+    #     return str(self.id)
+
+
 @login_manager.user_loader
 def load_user(user_id):
-    """Função callback para Flask-Login carregar um usuário pelo ID."""
-    return User.query.get(int(user_id))
+    """Carrega um usuário. Pode ser o Admin (do .env) ou um User (do DB)."""
+    admin_email = current_app.config.get('ADMIN_EMAIL')
+    if user_id == admin_email:
+        return AdminUser(email=admin_email)
+
+    # Tenta carregar como um ID numérico normal do banco de dados
+    try:
+        user_db_id = int(user_id)
+        return User.query.get(user_db_id)
+    except ValueError:
+        # Se user_id não for o e-mail do admin nem um inteiro, não é um usuário válido conhecido.
+        return None
 
 class User(db.Model, UserMixin): # Herda de UserMixin
     __tablename__ = 'user'
 
-    id = db.Column(db.Integer, primary_key=True) # UserMixin espera um campo 'id'
+    id = db.Column(db.Integer, primary_key=True) # UserMixin espera um campo 'id' para usuários do DB
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=True) # Nullable True para admin do .env sem hash no DB
+
+    user_type = db.Column(db.String(20), default='user', nullable=False) # 'user' ou 'admin'
+    is_approved = db.Column(db.Boolean, default=False, nullable=False)
+    approved_by_email = db.Column(db.String(120), nullable=True) # E-mail do admin que aprovou
+    approved_at = db.Column(db.DateTime, nullable=True)
 
     # Campos para confirmação de e-mail
     email_confirmed = db.Column(db.Boolean, default=False, nullable=False)

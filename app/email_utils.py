@@ -120,3 +120,45 @@ def send_confirmation_email(user_email, token):
         text_body=render_template('email/confirm_email.txt', confirm_url=confirm_link, email=user_email),
         html_body=render_template('email/confirm_email.html', confirm_url=confirm_link, email=user_email)
     )
+
+def send_registration_received_email(user_email):
+    """Envia e-mail ao usuário informando que o pedido de registro foi recebido."""
+    app = current_app._get_current_object()
+    subject = "Seu pedido de registro foi recebido"
+    send_email(
+        subject=subject,
+        recipients=[user_email],
+        text_body=render_template('email/registration_received.txt', email=user_email),
+        html_body=render_template('email/registration_received.html', email=user_email)
+    )
+
+def send_admin_new_user_notification_email(admin_email, new_user_email, user_id):
+    """Notifica o administrador sobre um novo pedido de registro."""
+    app = current_app._get_current_object()
+    subject = f"Novo Pedido de Registro: {new_user_email}"
+    # O link de aprovação será parte do painel do admin, aqui apenas notificamos.
+    # Poderíamos incluir um link direto para a página de gerenciamento de usuários se já soubermos a URL.
+    # Ex: admin_panel_url = url_for('main.admin_users_pending', _external=True) # Se tal rota existir
+
+    # Para construir a URL do painel admin, precisamos de um contexto de request ou SERVER_NAME
+    server_name = app.config.get('SERVER_NAME', 'localhost:5000') # Fallback
+    preferred_scheme = app.config.get('PREFERRED_URL_SCHEME', 'http')
+    if app.config.get('FLASK_USE_SSL'): preferred_scheme = 'https'
+
+    admin_dashboard_url = f"{preferred_scheme}://{server_name}{url_for('main.admin_dashboard')}" # Assumindo que admin_dashboard é a rota
+
+    send_email(
+        subject=subject,
+        recipients=[admin_email],
+        text_body=render_template('email/admin_new_user_notification.txt',
+                                  new_user_email=new_user_email,
+                                  user_id=user_id,
+                                  admin_dashboard_url=admin_dashboard_url),
+        html_body=render_template('email/admin_new_user_notification.html',
+                                  new_user_email=new_user_email,
+                                  user_id=user_id,
+                                  admin_dashboard_url=admin_dashboard_url)
+    )
+
+# A função send_confirmation_email (para confirmar e-mail após aprovação) já existe
+# e será chamada pela lógica de aprovação do administrador.

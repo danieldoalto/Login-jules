@@ -38,7 +38,25 @@ def create_app(config_class_string='config.Config'):
     db.init_app(app)
     mail.init_app(app)
     bcrypt.init_app(app)
-    login_manager.init_app(app) # Inicializa LoginManager com o app
+    login_manager.init_app(app)
+
+    # Carregar links dinâmicos do config.yml
+    from .config_loader import load_link_config
+    # Passar app.root_path explicitamente para garantir o caminho correto
+    # durante a inicialização, antes que o contexto da aplicação esteja totalmente ativo para current_app.
+    # No entanto, load_link_config foi escrito para tentar usar current_app.root_path,
+    # que deve estar disponível neste ponto de create_app.
+    # Se current_app.root_path não for confiável aqui, teríamos que fazer:
+    # app.config['DYNAMIC_LINKS'] = load_link_config(path=os.path.join(app.root_path, 'config.yml'))
+    # Mas vamos confiar que current_app.root_path é acessível ou que o fallback em load_link_config funciona.
+    # Para ser mais explícito e seguro:
+    config_file_path = os.path.join(app.root_path, 'config.yml')
+    app.config['DYNAMIC_LINKS'] = load_link_config(path=config_file_path)
+    if not app.config['DYNAMIC_LINKS']['admin_links'] and not app.config['DYNAMIC_LINKS']['user_links']:
+        app.logger.info("Nenhum link dinâmico foi carregado. Verifique config.yml ou logs anteriores.")
+    else:
+        app.logger.info(f"Links dinâmicos carregados: {len(app.config['DYNAMIC_LINKS']['admin_links'])} grupos de admin, {len(app.config['DYNAMIC_LINKS']['user_links'])} grupos de usuário.")
+
 
     # CSRF Protection (Flask-WTF)
     # Se SECRET_KEY estiver definida, a proteção CSRF é habilitada por padrão para todos os formulários FlaskForm.

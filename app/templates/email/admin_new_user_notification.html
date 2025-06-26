@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Pedido de Registro</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { width: 90%; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .button { display: inline-block; padding: 10px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 3px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Notificação: Novo Pedido de Registro</h2>
+        <p>Olá Administrador,</p>
+        <p>Um novo usuário solicitou registro no sistema:</p>
+        <ul>
+            <li><strong>E-mail:</strong> {{ new_user_email }}</li>
+            <li><strong>ID do Usuário:</strong> {{ user_id }}</li>
+        </ul>
+        <p>Por favor, acesse o painel de administração para revisar e aprovar (ou rejeitar) este pedido.</p>
+        <p>
+            <a href="{{ admin_dashboard_url }}" class="button">Acessar Painel de Administração</a>
+        </p>
+        <p>Se o botão não funcionar, copie e cole o seguinte link no seu navegador:</p>
+        <p><a href="{{ admin_dashboard_url }}">{{ admin_dashboard_url }}</a></p>
+        <div class="footer">
+            <p>Atenciosamente,<br>Sistema de Notificações</p>
+        </div>
+    </div>
+</body>
+</html>

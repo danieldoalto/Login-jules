@@ -1,0 +1,10 @@
+Olá {{ email }},
+
+Recebemos seu pedido de registro em nosso sistema.
+
+Sua conta passará por um processo de aprovação por um administrador. Você será notificado por e-mail assim que sua conta for aprovada e estiver pronta para confirmação do seu endereço de e-mail.
+
+Agradecemos a sua paciência.
+
+Atenciosamente,
+Equipe do Sistema

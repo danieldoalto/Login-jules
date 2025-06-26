@@ -14,7 +14,11 @@
             <ul>
                 <li><a href="{{ url_for('main.index') }}">Início</a></li>
                 {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('main.dashboard') }}">Painel</a></li>
+                    {% if current_user.user_type == 'admin' %}
+                        <li><a href="{{ url_for('main.admin_dashboard') }}">Painel Admin</a></li>
+                    {% elif current_user.user_type == 'user' %}
+                        <li><a href="{{ url_for('main.dashboard') }}">Meu Painel</a></li>
+                    {% endif %}
                     <li><a href="{{ url_for('main.logout') }}">Logout ({{ current_user.email }})</a></li>
                 {% else %}
                     <li><a href="{{ url_for('main.register') }}">Registrar</a></li>

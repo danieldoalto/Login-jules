@@ -5,6 +5,7 @@ python-dotenv>=0.19
 Flask-WTF>=1.0 # Para formulários e proteção CSRF
 Flask-Bcrypt>=1.0 # Para hashing de senhas
 Flask-Login>=0.5 # Para gerenciamento de sessão de usuário
+PyYAML>=5.0 # Para carregar config.yml
 # Para HTTPS em desenvolvimento (opcional, pode ser feito diretamente pelo Flask)
 # pyOpenSSL
 

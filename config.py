@@ -50,6 +50,11 @@ class Config:
     SSL_CERT_PATH = os.environ.get('SSL_CERT_PATH', 'cert.pem')
     SSL_KEY_PATH = os.environ.get('SSL_KEY_PATH', 'key.pem')
 
+    # Credenciais do Administrador (lidas do .env)
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    ADMIN_NOTIFICATIONS_EMAIL = os.environ.get('ADMIN_NOTIFICATIONS_EMAIL', ADMIN_EMAIL) # Default para o email do admin
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
