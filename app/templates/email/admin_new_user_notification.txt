@@ -1,0 +1,13 @@
+Olá Administrador,
+
+Um novo usuário solicitou registro no sistema:
+
+E-mail: {{ new_user_email }}
+ID do Usuário: {{ user_id }}
+
+Por favor, acesse o painel de administração para revisar e aprovar (ou rejeitar) este pedido.
+
+Link para o Painel de Administração: {{ admin_dashboard_url }}
+
+Atenciosamente,
+Sistema de Notificações

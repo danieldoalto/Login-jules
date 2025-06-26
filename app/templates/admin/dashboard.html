@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+    .admin-dashboard .card {
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .admin-dashboard .card-header {
+        background-color: #f7f7f7;
+        padding: 10px 15px;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+    }
+    .admin-dashboard .card-body {
+        padding: 15px;
+    }
+    .admin-dashboard .table {
+        width: 100%;
+        margin-bottom: 1rem;
+        color: #212529;
+        border-collapse: collapse;
+    }
+    .admin-dashboard .table th,
+    .admin-dashboard .table td {
+        padding: 0.75rem;
+        vertical-align: top;
+        border-top: 1px solid #dee2e6;
+    }
+    .admin-dashboard .table thead th {
+        vertical-align: bottom;
+        border-bottom: 2px solid #dee2e6;
+        background-color: #e9ecef;
+    }
+    .admin-dashboard .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+    }
+    .admin-dashboard .btn-success {
+        color: #fff;
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .admin-dashboard .btn-danger {
+        color: #fff;
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    .admin-dashboard .nav-pills .nav-link {
+        color: #007bff;
+        border: 1px solid transparent;
+        margin-right: 5px;
+    }
+    .admin-dashboard .nav-pills .nav-link.active {
+        color: #fff;
+        background-color: #007bff;
+    }
+    .admin-links-container { display: flex; flex-wrap: wrap; gap: 15px; }
+    .admin-link-group { flex-basis: 300px; }
+    .admin-link-group h4 { margin-bottom: 10px; font-size: 1.1em; color: #333;}
+    .admin-link-group ul { list-style: none; padding-left: 0; }
+    .admin-link-group ul li a { text-decoration: none; color: #007bff; }
+    .admin-link-group ul li a:hover { text-decoration: underline; }
+    .admin-link-group ul li .fas { margin-right: 8px; } /* Para ícones Font Awesome */
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 admin-dashboard">
+    <h2>{{ title }}</h2>
+    <p>Bem-vindo(a), {{ current_user.email }}!</p>
+
+    <!-- Abas de Navegação (Opcional) -->
+    <ul class="nav nav-pills mb-3" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pending-users-tab" data-bs-toggle="tab" data-bs-target="#pending-users" type="button" role="tab" aria-controls="pending-users" aria-selected="true">Usuários Pendentes</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="admin-links-tab" data-bs-toggle="tab" data-bs-target="#admin-links" type="button" role="tab" aria-controls="admin-links" aria-selected="false">Links Rápidos</button>
+        </li>
+        {# Adicionar mais abas se necessário, ex: Todos os Usuários, Configurações #}
+    </ul>
+
+    <div class="tab-content" id="adminTabsContent">
+        <!-- Aba de Usuários Pendentes -->
+        <div class="tab-pane fade show active" id="pending-users" role="tabpanel" aria-labelledby="pending-users-tab">
+            <div class="card">
+                <div class="card-header">
+                    Usuários Pendentes de Aprovação
+                </div>
+                <div class="card-body">
+                    {% if pending_users %}
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>E-mail</th>
+                                    <th>Registrado em</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in pending_users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.created_at.strftime('%d/%m/%Y %H:%M') if user.created_at else 'N/A' }} UTC</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('main.admin_approve_user', user_id=user.id) }}" style="display:inline;">
+                                            {{ approve_form.hidden_tag() }}
+                                            <button type="submit" class="btn btn-success btn-sm">Aprovar</button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('main.admin_delete_user', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('Tem certeza que quer REJEITAR (deletar) este usuário? Esta ação não pode ser desfeita.');">
+                                            {{ delete_form.hidden_tag() }}
+                                            <button type="submit" class="btn btn-danger btn-sm ms-1">Rejeitar (Deletar)</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>Não há usuários pendentes de aprovação no momento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba de Links do Administrador -->
+        <div class="tab-pane fade" id="admin-links" role="tabpanel" aria-labelledby="admin-links-tab">
+            <div class="card">
+                <div class="card-header">
+                    Links Rápidos do Administrador
+                </div>
+                <div class="card-body">
+                    {% if admin_links %}
+                        <div class="admin-links-container">
+                        {% for group in admin_links %}
+                            <div class="admin-link-group">
+                                {% if group.group_title %}<h4>{{ group.group_title }}</h4>{% endif %}
+                                <ul>
+                                    {% for link in group.links %}
+                                    <li>
+                                        <a href="{{ link.url }}" {% if link.new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                                            {% if link.icon %}<i class="{{ link.icon }}"></i>{% endif %}
+                                            {{ link.text }}
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>Nenhum link de administrador configurado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Adicionar Bootstrap JS para funcionalidade das abas, se não estiver globalmente no base.html #}
+{# Exemplo: <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script> #}
+{# Se base.html já inclui, não é necessário. Para este exemplo, assumimos que sim ou que será adicionado. #}
+{# Se g.csrf_token_hidden_input() não estiver disponível, remova-o ou implemente CSRF de outra forma para POSTs diretos. Flask-WTF forms lidam com isso automaticamente. #}
+{# Os formulários de aprovar/rejeitar são simples. Para mais segurança, poderiam ser FlaskForms. #}
+{% endblock %}
+
+{% block scripts_extra %}
+{# Se estiver usando Bootstrap 5 para as abas, o JS é necessário. #}
+{# Se base.html não inclui o JS do Bootstrap, adicione aqui ou no base.html #}
+<script>
+    // Ativar abas Bootstrap (se aplicável e não global)
+    var triggerTabList = [].slice.call(document.querySelectorAll('#adminTabs button'))
+    triggerTabList.forEach(function (triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl) // Supondo que 'bootstrap' está no escopo global
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault()
+            tabTrigger.show()
+        })
+    })
+    // Para que a primeira aba seja ativa ao carregar a página,
+    // o HTML já tem 'active' e 'show active'.
+    // Se houver preferência por uma aba específica baseada em URL hash:
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     var hash = window.location.hash;
+    //     if (hash) {
+    //         var triggerEl = document.querySelector('#adminTabs button[data-bs-target="' + hash + '"]');
+    //         if (triggerEl) {
+    //             var tabTrigger = new bootstrap.Tab(triggerEl);
+    //             tabTrigger.show();
+    //         }
+    //     }
+    // });
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{# Macro para renderizar campos de formulário com erros e classes Bootstrap-like #}
+{% macro render_field(field, label_visible=true, class="", **kwargs) %}
+    <div class="form-group {% if field.errors %}has-error{% endif %}">
+        {% if label_visible and field.label %}
+            {{ field.label(class="form-label") }}
+        {% endif %}
+
+        {{ field(class="form-control " + class, **kwargs) }}
+
+        {% if field.errors %}
+            <ul class="errors">
+            {% for error in field.errors %}
+                <li class="field-error">{{ error }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro render_checkbox_field(field, label_visible=true) %}
+<div class="form-check">
+    {{ field(class="form-check-input") }}
+    {% if label_visible and field.label %}
+        {{ field.label(class="form-check-label") }}
+    {% endif %}
+    {% if field.errors %}
+        <ul class="errors">
+        {% for error in field.errors %}
+            <li class="field-error">{{ error }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_submit_field(field, class="btn btn-primary") %}
+    {{ field(class=class, **kwargs) }}
+{% endmacro %}

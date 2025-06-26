@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+    .user-dashboard .card { margin-bottom: 20px; }
+    .user-dashboard .card-header { font-weight: bold; }
+    .user-links-container { display: flex; flex-wrap: wrap; gap: 15px; }
+    .user-link-group { flex-basis: 300px; margin-bottom: 20px;}
+    .user-link-group h4 { margin-bottom: 10px; font-size: 1.1em; color: #333;}
+    .user-link-group ul { list-style: none; padding-left: 0; }
+    .user-link-group ul li a { text-decoration: none; color: #007bff; }
+    .user-link-group ul li a:hover { text-decoration: underline; }
+    .user-link-group ul li .fas { margin-right: 8px; } /* Para ícones Font Awesome */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 user-dashboard">
+    <h2>{{ title }}</h2>
+
+    {% if current_user and current_user.is_authenticated and current_user.user_type == 'user' %}
+        <p>Bem-vindo(a) ao seu painel, <strong>{{ current_user.email }}</strong>!</p>
+
+        <div class="card mt-4">
+            <div class="card-header">Informações da Sessão</div>
+            <div class="card-body">
+                <ul>
+                    <li><strong>Seu IP Registrado:</strong> {{ current_user.current_logged_in_ip if current_user.current_logged_in_ip else "N/A" }}</li>
+                    <li>
+                        <strong>Expiração da Sessão de Login:</strong>
+                        {% if current_user.login_session_expiration %}
+                            {{ current_user.login_session_expiration.strftime('%d/%m/%Y %H:%M:%S') }} UTC
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </li>
+                    <li><strong>Status da Confirmação de E-mail:</strong> {% if current_user.email_confirmed %}Confirmado{% else %}Pendente{% endif %}</li>
+                    <li><strong>Status da Aprovação da Conta:</strong> {% if current_user.is_approved %}Aprovada{% else %}Pendente de Aprovação{% endif %}</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Meus Links Rápidos</div>
+            <div class="card-body">
+                {% if user_links %}
+                    <div class="user-links-container">
+                    {% for group in user_links %}
+                        <div class="user-link-group">
+                            {% if group.group_title %}<h4>{{ group.group_title }}</h4>{% endif %}
+                            <ul>
+                                {% for link in group.links %}
+                                <li>
+                                    <a href="{{ link.url }}" {% if link.new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                                        {% if link.icon %}<i class="{{ link.icon }}"></i>{% endif %}
+                                        {{ link.text }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <p>Nenhum link rápido configurado para você no momento.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Notas sobre o Firewall</div>
+            <div class="card-body">
+                <p>Se o seu login foi bem-sucedido, seu IP (<code>{{ current_user.current_logged_in_ip }}</code>) está temporariamente liberado no firewall do servidor para acessar os serviços vinculados aos links acima (e outros serviços no servidor, conforme a política de firewall).</p>
+                <p>Ao fazer logout, ou após a expiração da sessão (24 horas), este acesso será revogado.</p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="{{ url_for('main.index') }}" class="btn btn-info">Voltar para Início</a>
+            <a href="{{ url_for('main.logout') }}" class="btn btn-danger">Logout</a>
+        </div>
+
+    {% else %}
+        {# Esta parte não deve ser alcançada se a rota tiver as verificações corretas #}
+        <p>Você precisa estar logado como usuário e ter sua conta aprovada e e-mail confirmado para ver esta página.</p>
+        <p><a href="{{ url_for('main.login') }}">Fazer Login</a></p>
+    {% endif %}
+</div>
+{% endblock %}

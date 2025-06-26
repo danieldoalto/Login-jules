@@ -1,0 +1,12 @@
+Olá {{ email }},
+
+Obrigado por se registrar! Por favor, copie e cole o seguinte link no seu navegador para confirmar seu endereço de e-mail e ativar sua conta:
+
+{{ confirm_url }}
+
+Este link de confirmação é válido por 1 hora.
+
+Se você não se registrou em nosso site, por favor, ignore este e-mail.
+
+Atenciosamente,
+Equipe do Sistema

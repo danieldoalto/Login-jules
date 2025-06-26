@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Login{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <header>
+        <h1>Sistema de Login com Firewall</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('main.index') }}">Início</a></li>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.user_type == 'admin' %}
+                        <li><a href="{{ url_for('main.admin_dashboard') }}">Painel Admin</a></li>
+                    {% elif current_user.user_type == 'user' %}
+                        <li><a href="{{ url_for('main.dashboard') }}">Meu Painel</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('main.logout') }}">Logout ({{ current_user.email }})</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('main.register') }}">Registrar</a></li>
+                    <li><a href="{{ url_for('main.login') }}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>&copy; {{ "now"|date("Y") }} Meu Aplicativo</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

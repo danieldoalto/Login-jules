@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Página Inicial - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if current_user.is_authenticated %}
+        {% if current_user.user_type == 'admin' %}
+            <h2>Bem-vindo(a), Administrador {{ current_user.email }}!</h2>
+            <p>Utilize o <a href="{{ url_for('main.admin_dashboard') }}">Painel Admin</a> para gerenciar usuários e acessar suas ferramentas.</p>
+        {% elif current_user.user_type == 'user' %}
+            <h2>Bem-vindo(a) de volta, {{ current_user.email }}!</h2>
+            {% if not current_user.is_approved %}
+                <div class="alert alert-warning" role="alert">
+                    Sua conta ainda está aguardando aprovação de um administrador. Você será notificado por e-mail.
+                </div>
+            {% elif not current_user.email_confirmed %}
+                <div class="alert alert-info" role="alert">
+                    Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada (e spam) pelo link de confirmação que foi enviado após a aprovação da sua conta.
+                    {# Poderíamos adicionar um link para reenviar e-mail de confirmação aqui no futuro #}
+                </div>
+            {% else %}
+                <p>Acesse seu <a href="{{ url_for('main.dashboard') }}">Painel</a> para ver seus links e informações.</p>
+            {% endif %}
+        {% endif %}
+        <p><a href="{{ url_for('main.logout') }}" class="btn btn-outline-secondary mt-3">Logout</a></p>
+    {% else %}
+        <h2>Bem-vindo ao Sistema de Login com Firewall!</h2>
+        <p>Este sistema permite o registro de usuários (com aprovação do administrador) e gerenciamento dinâmico de acesso via firewall.</p>
+        <p>Por favor, registre-se ou faça login para continuar.</p>
+        <div style="margin-top: 20px;">
+            <a href="{{ url_for('main.register') }}" class="btn btn-success" style="margin-right: 10px;">Registrar Nova Conta</a>
+            <a href="{{ url_for('main.login') }}" class="btn btn-primary">Fazer Login</a>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+        <h4>Como Funciona o Acesso via Firewall:</h4>
+        <p>Após um login bem-sucedido (e se sua conta de usuário estiver aprovada e e-mail confirmado), seu endereço IP atual será temporariamente liberado no firewall do servidor. Isso permitirá acesso a todos os serviços configurados neste servidor.</p>
+        <p>Ao fazer logout, ou após a expiração da sua sessão de login (24 horas), essa permissão de acesso será revogada automaticamente.</p>
+        <p><strong>Nota para Administradores:</strong> Seu acesso também é gerenciado dinamicamente pelo firewall ao logar.</p>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block styles_extra %}
+<style>
+    .container { max-width: 800px; margin: auto; padding-top: 20px; }
+    .btn { display: inline-block; font-weight: 400; text-align: center; white-space: nowrap; vertical-align: middle;
+           -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+           border: 1px solid transparent; padding: .375rem .75rem; font-size: 1rem; line-height: 1.5;
+           border-radius: .25rem; text-decoration: none;
+           transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out; }
+    .btn-primary { color: #fff; background-color: #007bff; border-color: #007bff; }
+    .btn-success { color: #fff; background-color: #28a745; border-color: #28a745; }
+    .btn-outline-secondary { color: #6c757d; border-color: #6c757d; }
+    .btn-outline-secondary:hover { color: #fff; background-color: #6c757d; border-color: #6c757d; }
+    .alert { position: relative; padding: 1rem 1rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+    .alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+    .alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb; }
+</style>
+{% endblock %}

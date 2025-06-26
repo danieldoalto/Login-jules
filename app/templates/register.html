@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}Registrar - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-control { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; }
+    .btn-primary { background-color: #007bff; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background-color: #0056b3; }
+    .alert { padding: 1rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem; }
+    .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+    .field-error { color: red; font-size: 0.9em; }
+    #math_challenge_display { font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Crie sua Conta</h2>
+
+<form method="POST" action="{{ url_for('main.register') }}" novalidate>
+    {{ form.hidden_tag() }} {# CSRF token, num1, num2 #}
+
+    <div class="form-group">
+        {{ form.email.label }}
+        {{ form.email(class="form-control", placeholder="seuemail@example.com") }}
+        {% if form.email.errors %}
+            {% for error in form.email.errors %}
+                <span class="field-error">{{ error }}</span><br>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {{ form.password.label }}
+        {{ form.password(class="form-control") }}
+        {% if form.password.errors %}
+            {% for error in form.password.errors %}
+                <span class="field-error">{{ error }}</span><br>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {{ form.confirm_password.label }}
+        {{ form.confirm_password(class="form-control") }}
+        {% if form.confirm_password.errors %}
+            {% for error in form.confirm_password.errors %}
+                <span class="field-error">{{ error }}</span><br>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <p>Verificação: Quanto é <span id="math_challenge_display">{{ form.num1.data }} + {{ form.num2.data }}</span>?</p>
+        {{ form.math_answer.label(text="Sua Resposta:") }}
+        {{ form.math_answer(class="form-control", size=5) }}
+        {% if form.math_answer.errors %}
+            {% for error in form.math_answer.errors %}
+                <span class="field-error">{{ error }}</span><br>
+            {% endfor %}
+        {% endif %}
+        {% if math_error %} {# Erro customizado da rota #}
+            <span class="field-error">{{ math_error }}</span><br>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+
+<p>Já tem uma conta? <a href="{{ url_for('main.login') }}">Faça login aqui</a>.</p>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // Para o caso de querermos atualizar os números da pergunta dinamicamente
+    // ou se a forma de exibição for diferente.
+    // Neste caso, os valores já estão no HTML via form.num1.data e form.num2.data
+    // Se os campos num1 e num2 no formulário fossem do tipo 'hidden' mas com valores
+    // que precisassem ser exibidos de forma especial:
+    // const num1Display = document.getElementById('num1_display');
+    // const num2Display = document.getElementById('num2_display');
+    // if (num1Display && num2Display && {{ form.num1.data is not none }} && {{ form.num2.data is not none }}) {
+    //     num1Display.textContent = {{ form.num1.data }};
+    //     num2Display.textContent = {{ form.num2.data }};
+    // }
+</script>
+{% endblock %}

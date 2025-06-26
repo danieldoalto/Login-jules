@@ -1,0 +1,55 @@
+# Exemplo de configuração para links dinâmicos nos painéis
+# Este arquivo deve ser copiado para config.yml e personalizado.
+# config.yml deve ser adicionado ao .gitignore.
+
+# Links para o painel do Administrador
+admin_links:
+  - group_title: "Gerenciamento Interno" # Título opcional para agrupar links
+    links:
+      - text: "Painel Principal Admin"
+        url: "/admin/dashboard" # Link interno da aplicação
+        icon: "fas fa-tachometer-alt" # Exemplo de ícone (Font Awesome)
+      - text: "Gerenciar Usuários"
+        url: "/admin/users"
+        icon: "fas fa-users-cog"
+  - group_title: "Sistemas Externos"
+    links:
+      - text: "Monitoramento Grafana"
+        url: "http://grafana.example.com"
+        icon: "fas fa-chart-line"
+        new_tab: true # Abrir em nova aba
+      - text: "Documentação Interna"
+        url: "http://docs.example.com/admin"
+        icon: "fas fa-book"
+
+# Links para o painel do Usuário comum
+user_links:
+  - group_title: "Minha Conta"
+    links:
+      - text: "Meu Painel"
+        url: "/dashboard" # Link interno da aplicação
+        icon: "fas fa-user-circle"
+      - text: "Editar Perfil" # Exemplo, rota não implementada ainda
+        url: "/profile/edit"
+        icon: "fas fa-edit"
+  - group_title: "Recursos Úteis"
+    links:
+      - text: "Base de Conhecimento"
+        url: "http://kb.example.com"
+        icon: "fas fa-question-circle"
+        new_tab: true
+      - text: "Suporte Técnico"
+        url: "http://support.example.com"
+        icon: "fas fa-life-ring"
+        new_tab: true
+
+# Nota: 'icon' e 'new_tab' são exemplos de metadados adicionais que podem ser usados no template.
+# A estrutura pode ser adaptada conforme a necessidade.
+# Grupos de links são opcionais; pode ser uma lista simples de links diretamente sob admin_links/user_links.
+# Exemplo de lista simples:
+# admin_links:
+#   - text: "Link Simples 1"
+#     url: "/simple1"
+#   - text: "Link Simples 2"
+#     url: "http://externo.com"
+#     new_tab: true
