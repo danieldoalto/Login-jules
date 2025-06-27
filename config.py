@@ -1,21 +1,10 @@
 import os
-from dotenv import load_dotenv
-
-# Carrega variáveis de ambiente do arquivo .env no diretório raiz do projeto
-# (um nível acima de onde config.py está, se config.py estiver em um subdiretório como 'app')
-# Se config.py está na raiz, então .env na raiz é carregado.
-# Ajuste o path se necessário. Se run.py está na raiz e importa 'app', e 'app' importa 'config',
-# o diretório de trabalho é a raiz.
-dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env') # Se config.py está em 'app/'
-if not os.path.exists(dotenv_path):
-    dotenv_path = os.path.join(os.path.dirname(__file__), '.env') # Se config.py está na raiz
-
-load_dotenv(dotenv_path=dotenv_path, override=True)
 
 class Config:
     """Configurações base do aplicativo."""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'uma-chave-secreta-muito-dificil-de-adivinhar'
-    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    # A SECRET_KEY e outras variáveis agora são carregadas de forma confiável em run.py
+    # antes da criação do app. Aqui, apenas lemos do ambiente.
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'uma-chave-secreta-padrão-insegura'
 
     # Configurações do SQLAlchemy (movidas para create_app para usar instance_path)
     # SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
@@ -32,7 +21,10 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or MAIL_USERNAME
 
     # Configurações de Segurança
-    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'True').lower() == 'true' # True em produção
+    # Em modo de depuração (HTTP), SESSION_COOKIE_SECURE deve ser False.
+    # Em produção (HTTPS), deve ser True.
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    SESSION_COOKIE_SECURE = not DEBUG
     SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', 'True').lower() == 'true'
     SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax') # 'Lax' ou 'Strict'
     REMEMBER_COOKIE_SECURE = True # True em produção

@@ -1,11 +1,11 @@
 {# Macro para renderizar campos de formulário com erros e classes Bootstrap-like #}
-{% macro render_field(field, label_visible=true, class="", **kwargs) %}
+{% macro render_field(field, label_visible=true, class="") %}
     <div class="form-group {% if field.errors %}has-error{% endif %}">
         {% if label_visible and field.label %}
             {{ field.label(class="form-label") }}
         {% endif %}
 
-        {{ field(class="form-control " + class, **kwargs) }}
+        {{ field(class="form-control " + class) }}
 
         {% if field.errors %}
             <ul class="errors">
@@ -34,5 +34,5 @@
 {% endmacro %}
 
 {% macro render_submit_field(field, class="btn btn-primary") %}
-    {{ field(class=class, **kwargs) }}
+    {{ field(class=class) }}
 {% endmacro %}

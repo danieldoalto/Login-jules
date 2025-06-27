@@ -5,7 +5,11 @@ from threading import Thread
 
 def send_async_email(app, msg):
     with app.app_context():
-        mail.send(msg)
+        try:
+            mail.send(msg)
+            app.logger.info(f"Email sent successfully: Subject='{msg.subject}', Recipients='{msg.recipients}'")
+        except Exception as e:
+            app.logger.error(f"Failed to send email: Subject='{msg.subject}', Recipients='{msg.recipients}', Error: {e}", exc_info=True)
 
 def send_email(subject, recipients, text_body, html_body, sender=None):
     """
@@ -27,14 +31,8 @@ def send_email(subject, recipients, text_body, html_body, sender=None):
     msg.body = text_body
     msg.html = html_body
 
-    # Enviar e-mail de forma assíncrona para não bloquear a requisição
-    thread = Thread(target=send_async_email, args=[app, msg])
-    thread.start()
-    # Para depuração síncrona, você pode usar:
-    # mail.send(msg)
-    # print(f"E-mail enviado (simulado): Para {recipients}, Assunto: {subject}")
-
-
+    app.logger.info(f"Attempting to send email: Subject='{subject}', Recipients='{recipients}'")
+    Thread(target=send_async_email, args=[app, msg]).start()
 def send_confirmation_email(user_email, token):
     """Envia o e-mail de confirmação de cadastro."""
 from flask import url_for, request # Adicionado request

@@ -1,24 +1,16 @@
+# --- Início da Aplicação ---
+# 1. Carregar variáveis de ambiente do .env
+# Esta é a primeira coisa a ser feita para garantir que todas as configurações
+# subsequentes tenham acesso às variáveis de ambiente corretas.
+# `override=True` garante que os valores do .env substituam os do shell.
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+# 2. Importar e criar a aplicação Flask
 from app import create_app
 import os
-from dotenv import load_dotenv
-
-# Carrega .env antes de qualquer outra coisa para garantir que as variáveis estejam disponíveis
-# para config.py e create_app() se elas dependerem disso no momento da importação.
-# Idealmente, config.py lida com o carregamento do .env.
-# Se create_app() ou config.py não carregarem, podemos fazer aqui.
-# Assumindo que config.py já chama load_dotenv(), esta linha pode ser redundante ou
-# garantir que seja carregado se config.py não o fizer no contexto de execução de run.py.
-# Vamos garantir que seja carregado.
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-else:
-    print("Arquivo .env não encontrado na raiz do projeto. Usando configurações padrão ou variáveis de ambiente existentes.")
-
 
 # Determina qual classe de configuração usar com base na variável de ambiente
-# FLASK_CONFIG pode ser 'config.DevelopmentConfig', 'config.ProductionConfig', etc.
-# O padrão é 'config.Config' (que por sua vez lê de variáveis de ambiente)
 config_name = os.getenv('FLASK_CONFIG', 'config.Config')
 app = create_app(config_class_string=config_name)
 

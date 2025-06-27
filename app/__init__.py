@@ -4,6 +4,9 @@ from flask_mail import Mail
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager # Adicionado LoginManager
 import os
+from datetime import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 
 db = SQLAlchemy()
 mail = Mail()
@@ -17,6 +20,18 @@ login_manager.login_message_category = 'info'
 
 def create_app(config_class_string='config.Config'):
     app = Flask(__name__, instance_relative_config=True)
+
+    # Configuração de Logging
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=1024000, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Aplicação iniciada')
 
     # Configurações do App
     # app.config.from_object('config.Config') # Alterado para ser mais flexível
@@ -40,6 +55,10 @@ def create_app(config_class_string='config.Config'):
     bcrypt.init_app(app)
     login_manager.init_app(app)
 
+    @app.context_processor
+    def inject_year():
+        return {'current_year': datetime.utcnow().year}
+
     # Carregar links dinâmicos do config.yml
     from .config_loader import load_link_config
     # Passar app.root_path explicitamente para garantir o caminho correto
@@ -50,7 +69,7 @@ def create_app(config_class_string='config.Config'):
     # app.config['DYNAMIC_LINKS'] = load_link_config(path=os.path.join(app.root_path, 'config.yml'))
     # Mas vamos confiar que current_app.root_path é acessível ou que o fallback em load_link_config funciona.
     # Para ser mais explícito e seguro:
-    config_file_path = os.path.join(app.root_path, 'config.yml')
+    config_file_path = os.path.join(os.path.dirname(app.instance_path), 'config.yml')
     app.config['DYNAMIC_LINKS'] = load_link_config(path=config_file_path)
     if not app.config['DYNAMIC_LINKS']['admin_links'] and not app.config['DYNAMIC_LINKS']['user_links']:
         app.logger.info("Nenhum link dinâmico foi carregado. Verifique config.yml ou logs anteriores.")

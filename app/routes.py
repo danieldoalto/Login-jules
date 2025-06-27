@@ -23,10 +23,13 @@ def register():
     math_error = None # Para erros específicos da verificação matemática não cobertos pelo WTForms
 
     if request.method == 'POST':
+        current_app.logger.info(f"[REGISTER - POST] Iniciando verificação. Session keys: {list(session.keys())}")
         expected_sum_from_session = session.get('math_expected_sum')
         user_math_answer = form.math_answer.data # Já é convertido para int pelo IntegerField
+        current_app.logger.info(f"[REGISTER - POST] Valor esperado da sessão: {expected_sum_from_session}, Resposta do usuário: {user_math_answer}")
 
         if expected_sum_from_session is None:
+            current_app.logger.error("[REGISTER - POST] Erro: 'math_expected_sum' não encontrado na sessão.")
             flash('Houve um problema com a verificação. Por favor, tente novamente.', 'danger')
             # Regenerar desafio para o GET
             num1, num2, new_expected_sum = generate_math_challenge()
@@ -94,6 +97,7 @@ def register():
     form.num1.data = num1  # Para exibir a pergunta no template via {{ form.num1.data }}
     form.num2.data = num2  # Para exibir a pergunta no template via {{ form.num2.data }}
     session['math_expected_sum'] = expected_sum # Armazena a resposta correta na sessão para o POST
+    current_app.logger.info(f"[REGISTER - GET/Fallback] Novo desafio matemático gerado. Expected sum: {expected_sum}. Armazenado na sessão.")
 
     return render_template('register.html', title='Registrar', form=form, math_error=math_error)
 
@@ -131,30 +135,23 @@ def confirm_email(token):
     return redirect(url_for('main.login')) # Redireciona para login em todos os casos após tentativa de confirmação
 
 
-@main_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index')) # Ou para um painel de controle
 
-from .models import User, AdminUser # Adicionado AdminUser
-
-# ... (outras importações e código do blueprint) ...
 
 @main_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         if current_user.user_type == 'admin':
-            return redirect(url_for('main.admin_dashboard')) # Rota a ser criada
+            return redirect(url_for('main.admin_dashboard'))
         return redirect(url_for('main.dashboard'))
 
     form = LoginForm()
     math_error_login = None
 
     if request.method == 'POST':
-        # Validação da pergunta matemática primeiro
         expected_sum_login = session.get('math_expected_sum_login')
         user_answer_login = form.math_answer_login.data
         valid_math = False
+
         if expected_sum_login is None:
             flash('Houve um problema com a verificação de login. Por favor, tente novamente.', 'danger')
         elif user_answer_login != expected_sum_login:
@@ -162,29 +159,20 @@ def login():
         else:
             valid_math = True
 
-        if valid_math and form.validate_on_submit(): # CSRF e outras validações de campo
+        if valid_math and form.validate_on_submit():
             form_email = form.email.data.lower()
             form_password = form.password.data
-
             admin_env_email = current_app.config.get('ADMIN_EMAIL')
             admin_env_password = current_app.config.get('ADMIN_PASSWORD')
-
             authenticated_user_object = None
             login_success = False
 
             # 1. Tentar login como Administrador
             if form_email == admin_env_email and form_password == admin_env_password:
                 admin_user_obj = AdminUser(email=admin_env_email)
-                # Para o admin, o IP também precisa ser gerenciado, mas o objeto AdminUser não está no DB.
-                # Podemos simular a atualização se necessário ou tratar de forma diferente.
-                # Por simplicidade, vamos assumir que AdminUser pode ter current_logged_in_ip e login_session_expiration.
-                # A função update_login_session não existe em AdminUser, então precisamos de uma lógica similar aqui.
-
-                # Flask-Login usa o ID do objeto para a sessão. Para AdminUser, o ID é o e-mail.
                 login_user(admin_user_obj, remember=form.remember.data)
                 authenticated_user_object = admin_user_obj
                 login_success = True
-
             else:
                 # 2. Tentar login como Usuário do Banco de Dados
                 user_from_db = User.query.filter_by(email=form_email).first()
@@ -193,57 +181,41 @@ def login():
                         flash('Sua conta ainda não teve o e-mail confirmado. Por favor, verifique seu e-mail.', 'warning')
                     elif not user_from_db.is_approved:
                         flash('Sua conta ainda não foi aprovada por um administrador. Você será notificado por e-mail quando for aprovada.', 'warning')
-                    else: # E-mail confirmado e usuário aprovado
+                    else:
                         login_user(user_from_db, remember=form.remember.data)
-                        # Atualizar informações de login no DB (IP e expiração)
                         user_from_db.update_login_session(ip_address=request.remote_addr)
-                        db.session.commit() # Salva o IP no DB
+                        db.session.commit()
                         authenticated_user_object = user_from_db
                         login_success = True
-                else: # Usuário não encontrado ou senha incorreta
+                else:
                     flash('Login falhou. Verifique seu e-mail e senha.', 'danger')
 
             # Se o login (admin ou usuário) foi bem-sucedido
             if login_success and authenticated_user_object:
                 client_ip = request.remote_addr
 
-                # Lógica para "atualizar" IP e expiração para AdminUser (em memória)
+                # Lógica para "atualizar" IP para AdminUser (em memória)
                 if authenticated_user_object.user_type == 'admin':
-                    # Armazenar o IP do admin no objeto em memória e na sessão para uso no logout
-                    authenticated_user_object.current_logged_in_ip = client_ip # Define no objeto AdminUser
-                    session['admin_logged_in_ip'] = client_ip # Fallback na sessão
-                    # AdminUser não tem login_session_expiration persistido, mas o firewall não depende disso diretamente.
+                    authenticated_user_object.current_logged_in_ip = client_ip
+                    session['admin_logged_in_ip'] = client_ip
 
                 # Adicionar IP ao firewall para qualquer login bem-sucedido
-                    fw_success, fw_message = allow_ip(client_ip)
-                    if fw_success:
-                        flash(f'Login de Administrador bem-sucedido! Bem-vindo, {authenticated_user_object.email}. Seu IP {client_ip} foi permitido no firewall.', 'success')
-                    else:
-                        # O login foi bem-sucedido, mas o firewall falhou.
-                        # O que fazer? Por enquanto, apenas avisar. Poderia fazer logout forçado.
-                        flash(f'Login bem-sucedido, mas houve um problema ao liberar seu IP ({client_ip}) no firewall: {fw_message}. Por favor, contate o suporte.', 'warning')
-                        # Considerar reverter o login ou não permitir o acesso se o firewall for crítico.
-                    fw_success, fw_message = allow_ip(client_ip)
-                    if fw_success:
-                        flash(f'Login bem-sucedido! Bem-vindo, {authenticated_user_object.email}. Seu IP {client_ip} foi permitido no firewall.', 'success')
-                    else:
-                        flash(f'Login bem-sucedido, mas houve um problema ao liberar seu IP ({client_ip}) no firewall: {fw_message}. Por favor, contate o suporte.', 'warning')
+                fw_success, fw_message = allow_ip(client_ip)
+                if fw_success:
+                    flash(f'Login bem-sucedido! Bem-vindo, {authenticated_user_object.email}. Seu IP {client_ip} foi permitido no firewall.', 'success')
+                else:
+                    flash(f'Login bem-sucedido, mas houve um problema ao liberar seu IP ({client_ip}) no firewall: {fw_message}. Por favor, contate o suporte.', 'warning')
 
-                    session.pop('math_expected_sum_login', None)
+                session.pop('math_expected_sum_login', None)
+                next_page = request.args.get('next')
 
-                    next_page = request.args.get('next')
-                    # Redirecionar para painel específico do tipo de usuário
-                    if authenticated_user_object.user_type == 'admin':
-                        return redirect(next_page) if next_page else redirect(url_for('main.admin_dashboard')) # Rota a ser criada
-                    else: # user_type == 'user'
-                        return redirect(next_page) if next_page else redirect(url_for('main.dashboard'))
-            # else: Se login_success for False, as mensagens de erro já foram dadas.
-
-        # Se a matemática não for válida ou o form.validate_on_submit() falhar (e não for erro matemático)
-        elif valid_math and not form.is_submitted(): # Entrou no POST mas não passou no validate_on_submit por outros motivos
-             flash('Por favor, corrija os erros no formulário de login.', 'danger')
-        # Se math_error_login já foi definido, ele será exibido. Se não, e form.errors existir, o flash acima cobre.
-
+                if authenticated_user_object.user_type == 'admin':
+                    return redirect(next_page) if next_page else redirect(url_for('main.admin_dashboard'))
+                else:
+                    return redirect(next_page) if next_page else redirect(url_for('main.dashboard'))
+        
+        elif valid_math and form.errors:
+            flash('Por favor, corrija os erros no formulário de login.', 'danger')
 
     # Para GET request ou se POST falhou e precisa re-renderizar o form
     num1_login, num2_login, expected_sum_login_sess = generate_math_challenge()
@@ -417,64 +389,7 @@ def admin_delete_user(user_id):
 
     return redirect(url_for('main.admin_dashboard'))
 
-# A rota de logout já existe e funciona para admin também.
-# O redirecionamento pós-login do admin para /admin/dashboard já foi ajustado.
-        return redirect(url_for('main.admin_dashboard'))
 
-    if user_to_approve.is_approved:
-        flash(f"Usuário {user_to_approve.email} já está aprovado.", "info")
-        return redirect(url_for('main.admin_dashboard'))
-
-    try:
-        user_to_approve.is_approved = True
-        user_to_approve.approved_by_email = current_user.email # Email do admin logado
-        user_to_approve.approved_at = datetime.utcnow()
-
-        # Gerar token de confirmação de e-mail AGORA que foi aprovado
-        confirmation_token = user_to_approve.generate_email_confirmation_token()
-        # O token e sua expiração são salvos no objeto user_to_approve pelo método acima.
-
-        db.session.commit()
-
-        # Enviar e-mail de confirmação para o usuário
-        try:
-            send_confirmation_email(user_email=user_to_approve.email, token=confirmation_token)
-            flash(f"Usuário {user_to_approve.email} aprovado com sucesso! E-mail de confirmação enviado.", "success")
-        except Exception as mail_exc:
-            current_app.logger.error(f"Usuário {user_to_approve.email} aprovado, mas falha ao enviar e-mail de confirmação: {mail_exc}")
-            flash(f"Usuário {user_to_approve.email} aprovado, mas houve um erro ao enviar o e-mail de confirmação. Por favor, verifique os logs.", "warning")
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro ao aprovar usuário {user_to_approve.email}: {e}")
-        flash(f"Erro ao aprovar usuário: {str(e)}", "danger")
-
-    return redirect(url_for('main.admin_dashboard'))
-
-@main_bp.route('/admin/users/delete/<int:user_id>', methods=['POST'])
-@admin_required
-def admin_delete_user(user_id):
-    user_to_delete = User.query.get_or_404(user_id)
-
-    if user_to_delete.user_type == 'admin': # Não permitir auto-deleção ou deleção de outros admins por esta rota
-        flash("Administradores não podem ser deletados por esta interface.", "danger")
-        return redirect(url_for('main.admin_dashboard'))
-
-    try:
-        email_deleted = user_to_delete.email
-        # Se houver IP no firewall para este usuário (improvável para não aprovados, mas por segurança)
-        if user_to_delete.current_logged_in_ip:
-            deny_ip(user_to_delete.current_logged_in_ip) # Tenta remover do firewall
-
-        db.session.delete(user_to_delete)
-        db.session.commit()
-        flash(f"Usuário {email_deleted} (ID: {user_id}) foi deletado com sucesso.", "success")
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro ao deletar usuário ID {user_id}: {e}")
-        flash(f"Erro ao deletar usuário: {str(e)}", "danger")
-
-    return redirect(url_for('main.admin_dashboard'))
 
 # A rota de logout já existe e funciona para admin também.
 # O redirecionamento pós-login do admin para /admin/dashboard já foi ajustado.
