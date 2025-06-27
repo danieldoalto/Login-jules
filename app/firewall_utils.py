@@ -1,27 +1,37 @@
 import subprocess
 import shlex
 from flask import current_app
+from flask_login import current_user
+from . import db
+from .models import FirewallLog
 
 # NOTA DE SEGURANÇA IMPORTANTE:
 # Estas funções assumem que o usuário executando a aplicação Flask tem permissão
-# para executar os comandos `ufw` via `sudo` sem senha.
+# para executar os comandos `iptables` via `sudo` sem senha.
 # Isso deve ser configurado com muito cuidado no arquivo /etc/sudoers.
 # Exemplo (restritivo):
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw allow from [0-9.]* to any
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw delete allow from [0-9.]* to any
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw status
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw reload
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw --force enable
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw default deny incoming
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw default allow outgoing
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw allow ssh
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw allow http
-# www-data ALL=(ALL) NOPASSWD: /usr/sbin/ufw allow https
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A WHITELIST -s [0-9.]* -j ACCEPT
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -D WHITELIST -s [0-9.]* -j ACCEPT
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -L INPUT -n -v
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -L FORWARD -n -v
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -L WHITELIST -n -v
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -F
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -X
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -Z
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -P INPUT DROP
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -P FORWARD DROP
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -P OUTPUT ACCEPT
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -N WHITELIST
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A INPUT -j WHITELIST
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A FORWARD -j WHITELIST
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A INPUT -i lo -j ACCEPT
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+# www-data ALL=(ALL) NOPASSWD: /usr/sbin/iptables -A INPUT -p tcp --dport [0-9]* -j ACCEPT
 # Onde 'www-data' é o usuário que executa sua aplicação Flask.
 # Testar esta configuração é crucial em um ambiente seguro.
 
-def _run_ufw_command(command_str):
-    """Executa um comando ufw com sudo e lida com a saída."""
+def _run_iptables_command(command_str):
+    """Executa um comando iptables com sudo e lida com a saída."""
     try:
         # Adiciona sudo ao comando
         full_command = f"sudo {command_str}"
@@ -35,102 +45,147 @@ def _run_ufw_command(command_str):
         stderr_decoded = stderr.decode('utf-8').strip()
 
         if process.returncode == 0:
-            current_app.logger.info(f"Comando UFW bem-sucedido: {command_str}. Saída: {stdout_decoded}")
+            current_app.logger.info(f"Comando IPTables bem-sucedido: {command_str}. Saída: {stdout_decoded}")
             return True, stdout_decoded
         else:
-            current_app.logger.error(f"Erro ao executar comando UFW: {command_str}. Código: {process.returncode}. Erro: {stderr_decoded}. Saída: {stdout_decoded}")
+            current_app.logger.error(f"Erro ao executar comando IPTables: {command_str}. Código: {process.returncode}. Erro: {stderr_decoded}. Saída: {stdout_decoded}")
             return False, f"Erro: {stderr_decoded} (Saída: {stdout_decoded})"
 
     except subprocess.TimeoutExpired:
-        current_app.logger.error(f"Timeout ao executar comando UFW: {command_str}")
+        current_app.logger.error(f"Timeout ao executar comando IPTables: {command_str}")
         process.kill() # Garante que o processo seja morto
         return False, "Timeout ao executar o comando."
     except Exception as e:
-        current_app.logger.error(f"Exceção ao executar comando UFW: {command_str}. Erro: {e}")
+        current_app.logger.error(f"Exceção ao executar comando IPTables: {command_str}. Erro: {e}")
         return False, f"Exceção: {str(e)}"
 
 def allow_ip(ip_address):
     """
-    Adiciona o IP à lista de permissões do UFW para todas as portas e protocolos.
-    Considerar restringir portas/protocolos se necessário.
+    Adiciona o IP à chain WHITELIST do IPTables e registra a ação.
     """
     if not ip_address:
         current_app.logger.warning("Tentativa de permitir IP vazio.")
         return False, "IP não fornecido."
 
-    # Comando para permitir todas as portas para o IP específico.
-    # Pode ser mais restritivo: "ufw allow from {ip_address} to any port 80,443 proto tcp"
-    # Mas o requisito é "acesso a todas as portas".
-    command = f"ufw allow from {ip_address}"
-    success, message = _run_ufw_command(command)
+    # Adiciona a regra para o IP na chain WHITELIST
+    command = f"iptables -A WHITELIST -s {ip_address} -j ACCEPT"
+    success, message = _run_iptables_command(command)
     if success:
-        # UFW pode precisar ser recarregado para aplicar algumas regras,
-        # mas 'allow from' geralmente é aplicado imediatamente.
-        # _run_ufw_command("ufw reload") # Descomentar se necessário após testes.
-        current_app.logger.info(f"IP {ip_address} permitido no firewall.")
+        current_app.logger.info(f"IP {ip_address} adicionado à WHITELIST do IPTables.")
+        # Registrar a ação no banco de dados
+        user_id = current_user.id if current_user.is_authenticated else None
+        log_entry = FirewallLog(ip_address=ip_address, action='allow', user_id=user_id)
+        db.session.add(log_entry)
+        db.session.commit()
     return success, message
 
 def deny_ip(ip_address):
-    """Remove uma regra de permissão para o IP do UFW."""
+    """
+    Remove o IP da chain WHITELIST do IPTables e registra a ação.
+    """
     if not ip_address:
         current_app.logger.warning("Tentativa de negar IP vazio.")
         return False, "IP não fornecido."
 
-    command = f"ufw delete allow from {ip_address}"
-    # Nota: `ufw delete` pode requerer o número da regra se houver múltiplas regras idênticas
-    # ou se a regra foi adicionada de forma mais específica.
-    # Se `ufw allow from <ip>` foi usado, `ufw delete allow from <ip>` deve funcionar.
-    # É importante que a regra de negação corresponda à regra de permissão.
-    success, message = _run_ufw_command(command)
+    # Remove a regra para o IP da chain WHITELIST
+    command = f"iptables -D WHITELIST -s {ip_address} -j ACCEPT"
+    success, message = _run_iptables_command(command)
     if success:
-        # _run_ufw_command("ufw reload") # Descomentar se necessário
-        current_app.logger.info(f"Regra de permissão para IP {ip_address} removida do firewall.")
+        current_app.logger.info(f"IP {ip_address} removido da WHITELIST do IPTables.")
+        # Registrar a ação no banco de dados
+        user_id = current_user.id if current_user.is_authenticated else None
+        log_entry = FirewallLog(ip_address=ip_address, action='deny', user_id=user_id)
+        db.session.add(log_entry)
+        db.session.commit()
     return success, message
 
 def get_firewall_status():
-    """Obtém o status do UFW."""
-    return _run_ufw_command("ufw status")
+    """Obtém o status das regras do IPTables."""
+    # Retorna todas as regras para INPUT, FORWARD e WHITELIST
+    input_status = _run_iptables_command("iptables -L INPUT -n -v")
+    forward_status = _run_iptables_command("iptables -L FORWARD -n -v")
+    whitelist_status = _run_iptables_command("iptables -L WHITELIST -n -v")
+    return {
+        "INPUT": input_status,
+        "FORWARD": forward_status,
+        "WHITELIST": whitelist_status
+    }
 
 def setup_initial_firewall_rules(ssh_port="22", web_ports=["80", "443"]):
     """
-    Configura as regras iniciais e básicas do firewall UFW.
+    Configura as regras iniciais e básicas do firewall IPTables.
     Esta função é destrutiva e deve ser usada com extremo cuidado.
     Certifique-se de que a porta SSH está correta para não perder acesso ao servidor.
     """
-    current_app.logger.warning("Iniciando configuração das regras iniciais do firewall. ISSO PODE SER DESTRUTIVO.")
+    current_app.logger.warning("Iniciando configuração das regras iniciais do firewall IPTables. ISSO PODE SER DESTRUTIVO.")
 
     results = {}
     success_overall = True
 
-    commands = [
-        "ufw default deny incoming",    # Bloqueia todas as conexões de entrada por padrão
-        "ufw default allow outgoing",   # Permite todas as conexões de saída por padrão
-        f"ufw allow {ssh_port}/tcp",    # PERMITE ACESSO SSH! VERIFIQUE ESTA PORTA!
+    # Limpar todas as regras existentes e chains personalizadas
+    commands_flush = [
+        "iptables -F", # Limpa todas as regras de todas as chains
+        "iptables -X", # Deleta todas as chains vazias criadas pelo usuário
+        "iptables -Z"  # Zera contadores
     ]
-    for port in web_ports:
-        commands.append(f"ufw allow {port}/tcp") # Permite tráfego HTTP/HTTPS
-
-    for cmd_suffix in commands:
-        success, msg = _run_ufw_command(cmd_suffix)
-        results[cmd_suffix] = {"success": success, "message": msg}
+    for cmd in commands_flush:
+        success, msg = _run_iptables_command(cmd)
+        results[cmd] = {"success": success, "message": msg}
         if not success:
             success_overall = False
-            current_app.logger.error(f"Falha crítica ao configurar regra inicial: {cmd_suffix}")
-            # Considerar parar aqui ou reverter, dependendo da política.
+            current_app.logger.error(f"Falha ao limpar regras IPTables: {cmd}")
 
-    # Habilitar UFW (se não estiver ativo). Use --force para não pedir confirmação.
-    # Verificar status antes pode ser uma boa ideia.
-    # status_success, status_msg = get_firewall_status()
-    # if "inactive" in status_msg.lower():
-    enable_success, enable_msg = _run_ufw_command("ufw --force enable")
-    results["enable_ufw"] = {"success": enable_success, "message": enable_msg}
-    if not enable_success:
+    # Definir políticas padrão para DROP
+    commands_policy = [
+        "iptables -P INPUT DROP",
+        "iptables -P FORWARD DROP",
+        "iptables -P OUTPUT ACCEPT" # Geralmente, saída é permitida
+    ]
+    for cmd in commands_policy:
+        success, msg = _run_iptables_command(cmd)
+        results[cmd] = {"success": success, "message": msg}
+        if not success:
+            success_overall = False
+            current_app.logger.error(f"Falha ao definir política padrão IPTables: {cmd}")
+
+    # Criar a chain WHITELIST
+    success, msg = _run_iptables_command("iptables -N WHITELIST")
+    results["iptables -N WHITELIST"] = {"success": success, "message": msg}
+    if not success:
         success_overall = False
-        current_app.logger.error("Falha ao habilitar UFW.")
+        current_app.logger.error("Falha ao criar chain WHITELIST.")
+
+    # Adicionar regras JUMP para a WHITELIST nas chains INPUT e FORWARD
+    commands_jump = [
+        "iptables -A INPUT -j WHITELIST",
+        "iptables -A FORWARD -j WHITELIST"
+    ]
+    for cmd in commands_jump:
+        success, msg = _run_iptables_command(cmd)
+        results[cmd] = {"success": success, "message": msg}
+        if not success:
+            success_overall = False
+            current_app.logger.error(f"Falha ao adicionar regra JUMP para WHITELIST: {cmd}")
+
+    # Regras para permitir tráfego específico
+    commands_specific = [
+        "iptables -A INPUT -i lo -j ACCEPT", # Permitir loopback
+        "iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT", # Permitir conexões estabelecidas/relacionadas
+        f"iptables -A INPUT -p tcp --dport {ssh_port} -j ACCEPT" # Permitir SSH
+    ]
+    for port in web_ports:
+        commands_specific.append(f"iptables -A INPUT -p tcp --dport {port} -j ACCEPT") # Permitir portas web
+
+    for cmd in commands_specific:
+        success, msg = _run_iptables_command(cmd)
+        results[cmd] = {"success": success, "message": msg}
+        if not success:
+            success_overall = False
+            current_app.logger.error(f"Falha ao adicionar regra específica IPTables: {cmd}")
 
     if success_overall:
-        current_app.logger.info("Regras iniciais do firewall configuradas e UFW habilitado.")
+        current_app.logger.info("Regras iniciais do firewall IPTables configuradas.")
     else:
-        current_app.logger.error("UMA OU MAIS REGRAS INICIAIS DO FIREWALL FALHARAM. VERIFIQUE IMEDIATAMENTE.")
+        current_app.logger.error("UMA OU MAIS REGRAS INICIAIS DO FIREWALL IPTABLES FALHARAM. VERIFIQUE IMEDIATAMENTE.")
 
     return success_overall, results

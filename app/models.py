@@ -144,3 +144,18 @@ class User(db.Model, UserMixin): # Herda de UserMixin
             self.clear_login_session()
             # db.session.commit() # O chamador deve lidar com o commit
         return False
+
+
+class FirewallLog(db.Model):
+    __tablename__ = 'firewall_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(45), nullable=False) # IPv4 ou IPv6
+    action = db.Column(db.String(10), nullable=False) # 'allow' ou 'deny'
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Quem fez a ação, se logado
+
+    user = db.relationship('User', backref='firewall_logs')
+
+    def __repr__(self):
+        return f"<FirewallLog {self.action} {self.ip_address} at {self.timestamp}>"
